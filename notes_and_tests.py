@@ -82,3 +82,19 @@ for path_ in path:
 
     cv2.imshow("images", np.hstack([image, output, hsv, output_hsv]))
     cv2.waitKey(0)
+
+
+
+# czytanie plikow xml
+# tree = ET.parse('D:\programy_SI\PROJEKT_SI\/annotations\/road0.xml')
+# root = tree.getroot()
+# for child in root:
+#     print(child.tag, child.attrib)
+# print(root[1].text)         #filename
+# print(root[4][0].text)      #name np. trafficlight
+
+#
+# img = cv2.imread('1.jpg', 1)
+# path = 'D:/OpenCV/Scripts/Images'
+# cv2.imwrite(os.path.join(path , 'waka.jpg'), img)
+# cv2.waitKey(0)
