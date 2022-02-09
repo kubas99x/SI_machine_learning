@@ -17,6 +17,14 @@
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
+  <component name="GitSEFilterConfiguration">
+    <file-type-list>
+      <filtered-out-file-type name="LOCAL_BRANCH" />
+      <filtered-out-file-type name="REMOTE_BRANCH" />
+      <filtered-out-file-type name="TAG" />
+      <filtered-out-file-type name="COMMIT_BY_MESSAGE" />
+    </file-type-list>
+  </component>
   <component name="ProjectId" id="24R8zrSItjIQPMEqXFtxADnrzpT" />
   <component name="ProjectViewState">
     <option name="hideEmptyMiddlePackages" value="true" />
@@ -25,10 +33,10 @@
   <component name="PropertiesComponent">
     <property name="RunOnceActivity.OpenProjectViewOnStart" value="true" />
     <property name="RunOnceActivity.ShowReadmeOnStart" value="true" />
-    <property name="last_opened_file_path" value="$PROJECT_DIR$/../../SI_WSPOLPRACA_PROJEKT" />
+    <property name="last_opened_file_path" value="$PROJECT_DIR$/../../lab5_zad13_new" />
     <property name="settings.editor.selected.configurable" value="com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable" />
   </component>
-  <component name="RunManager" selected="Python.sortowanie_zdjec_do_folderow">
+  <component name="RunManager" selected="Python.main">
     <configuration name="automatic_collor_correction" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="SI_machine_learning" />
       <option name="INTERPRETER_OPTIONS" value="" />
@@ -115,9 +123,9 @@
     </configuration>
     <recent_temporary>
       <list>
-        <item itemvalue="Python.sortowanie_zdjec_do_folderow" />
         <item itemvalue="Python.main" />
         <item itemvalue="Python.notes_and_tests" />
+        <item itemvalue="Python.sortowanie_zdjec_do_folderow" />
         <item itemvalue="Python.automatic_collor_correction" />
       </list>
     </recent_temporary>

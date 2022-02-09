@@ -1,51 +1,74 @@
 import numpy as np
 import cv2
+import os
 
-# load the image
-path = []
-for i in range(150):
-    n =  + i
-    #path.append(f"D:\programy_SI\PROJEKT_SI\znak_{n}_test.png")
-    path.append(f"D:\programy_SI\PROJEKT_SI\images\/road{n}.png")
+def loadingImage():
+    # load the image
+    pathSpeedSights = []
+    pathOther = []
+    for i in range(900):
+        if os.path.isfile(f'D:\programy_SI\PROJEKT_SI\/speedLimitsTrain\/road{i}.png'):
+            pathSpeedSights.append(f'D:\programy_SI\PROJEKT_SI\/speedLimitsTrain\/road{i}.png')
+        elif os.path.isfile(f'D:\programy_SI\PROJEKT_SI\/otherTrain\/road{i}.png'):
+            pathOther.append(f'D:\programy_SI\PROJEKT_SI\/otherTrain\/road{i}.png')
+    return pathSpeedSights, pathOther
+
+def makingMaskForCircles(hsvImage, lowerMaskL, lowerMaskH, higherMaskL, higherMaskH):
+    lowerMask = cv2.inRange(hsvImage, lowerMaskL, lowerMaskH)
+    higherMask = cv2.inRange(hsvImage, higherMaskL, higherMaskH)
+    mask = lowerMask + higherMask
+    outputMask = cv2.bitwise_and(hsvImage, hsvImage, mask=mask)  # Mask for HSV
+    imageRGB = cv2.cvtColor(outputMask, cv2.COLOR_HSV2BGR)  # HSV to RGB
+    imageGREY = cv2.cvtColor(imageRGB, cv2.COLOR_BGR2GRAY)  # RGB to GRAY
+    bluredImage = cv2.medianBlur(imageGREY, 5)  # blur for circles
+    return bluredImage
 
 
+def circleOnImage(path):
+    falseCircles = 0;
+    for path_ in path:
+        circles4 = None
+        circles5 = None
+        image = cv2.imread(path_)
+        hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
 
-for path_ in path:
-    image = cv2.imread(path_)
-    # mask = cv2.inRange(image, np.array([17, 15, 100]), np.array([50, 56, 200]))
-    # output = cv2.bitwise_and(image, image, mask=mask)
+        bluredImage1 = makingMaskForCircles(hsv, np.array([0, 120, 10]), np.array([10, 255, 255]),
+                                            np.array([160, 80, 10]), np.array([180, 255, 255]))
+        circles3 = cv2.HoughCircles(bluredImage1, cv2.HOUGH_GRADIENT, 1, 100,
+                                    param1=50, param2=25, minRadius=0, maxRadius=0)
+        if circles3 is None:
+            bluredImage2 = makingMaskForCircles(hsv, np.array([0, 40, 10]), np.array([10, 255, 255]),
+                                                np.array([140, 5, 10]), np.array([180, 255, 255]))
+            circles4 = cv2.HoughCircles(bluredImage2, cv2.HOUGH_GRADIENT, 1, 100,
+                                        param1=50, param2=25, minRadius=0, maxRadius=0)
+        if (circles3 is None) & (circles4 is None):
+            bluredImage3 = makingMaskForCircles(hsv, np.array([0, 40, 10]), np.array([10, 255, 255]),
+                                                np.array([115, 5, 10]), np.array([130, 255, 255]))
+            circles5 = cv2.HoughCircles(bluredImage3, cv2.HOUGH_GRADIENT, 1, 100,
+                                        param1=50, param2=25, minRadius=0, maxRadius=0)
+        circles = None
+        if circles3 is not None:
+            circles = np.uint16(np.around(circles3))
+        elif circles4 is not None:
+            circles = np.uint16(np.around(circles4))
+        elif circles5 is not None:
+            circles = np.uint16(np.around(circles5))
+        try:
+            for i in circles[0, :]:
+                # draw the outer circle
+                cv2.circle(image, (i[0], i[1]), i[2], (0, 255, 0), 2)
+                # draw the center of the circle
+                cv2.circle(image, (i[0], i[1]), 2, (0, 255, 0), 3)
+        except:
+            falseCircles += 1
 
-    hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
-    mask_hsv_lower = cv2.inRange(hsv, np.array([0, 120, 10]), np.array([10, 255, 255]))
-    mask_hsv_upper = cv2.inRange(hsv, np.array([160, 80, 10]), np.array([180, 255, 255]))
-    #testowa, za dużo wyznacza
-    #mask_hsv_upper = cv2.inRange(hsv, np.array([120, 50, 10]), np.array([180, 255, 255]))
-    mask2 = mask_hsv_upper + mask_hsv_lower
-    output_hsv = cv2.bitwise_and(hsv, hsv, mask=mask2)
+        # cv2.imshow(f"images{path_}", np.hstack([image]))
+        # cv2.waitKey(0)
+    print(falseCircles)
 
-    # powrot z hsv do RGB i z RGB do szarosci
-    image_RGB = cv2.cvtColor(output_hsv, cv2.COLOR_HSV2BGR)
-    image_HSV_RGB_GREY = cv2.cvtColor(image_RGB, cv2.COLOR_BGR2GRAY)
-    # dobre parametry kółek
-    image_HSV_RGB_GREY = cv2.medianBlur(image_HSV_RGB_GREY, 5)
-    circles3 = cv2.HoughCircles(image_HSV_RGB_GREY, cv2.HOUGH_GRADIENT, 1, 100,
-                                param1=50, param2=25, minRadius=0, maxRadius=0)
-    # testowe parametry kółek
-    # image_HSV_RGB_GREY = cv2.medianBlur(image_HSV_RGB_GREY, 5)
-    # circles3 = cv2.HoughCircles(image_HSV_RGB_GREY, cv2.HOUGH_GRADIENT_ALT, 1, 20,
-    #                            param1=300, param2=0.55, minRadius=0, maxRadius=0)
+def main():
+    pathsWithSpeedSights, pathsWithOther = loadingImage()
+    circleOnImage(pathsWithSpeedSights)
 
-    # dla próby malowanie kółek na image
-    try:
-        circles = np.uint16(np.around(circles3))
-        for i in circles[0, :]:
-            # draw the outer circle
-            cv2.circle(image, (i[0], i[1]), i[2], (0, 255, 0), 2)
-            # draw the center of the circle
-            cv2.circle(image, (i[0], i[1]), 2, (0, 255, 0), 3)
-    except:
-        print('Problem z kółkami szarosci')
-
-    # cv2.imshow("maska",mask2)
-    cv2.imshow(f"images{path_}", np.hstack([image, output_hsv]))
-    cv2.waitKey(0)
+if __name__ == '__main__':
+    main()

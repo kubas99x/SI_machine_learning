@@ -2,6 +2,7 @@ import numpy as np
 import cv2
 import copy
 import colorsys
+import os
 
 # Wycinanie i robienie ramki
 #image = cv2.imread("D:\programy_SI\PROJEKT_SI\znak_1_test.png")
@@ -68,19 +69,53 @@ print(colorsys.rgb_to_hsv(168, 18, 33))
 
 #testy
 path=[]
-for i in range(100):
-    path.append(f"D:\programy_SI\PROJEKT_SI\images\/road{i}.png")
+for i in range(900):
+    if os.path.isfile(f'D:\programy_SI\PROJEKT_SI\/noweKolory\/road{i}.png'):
+        path.append(f"D:\programy_SI\PROJEKT_SI\/noweKolory\/road{i}.png")
 
 for path_ in path:
     image = cv2.imread(path_)
-    mask = cv2.inRange(image, np.array([17, 15, 100]), np.array([50, 56, 200]))
-    output = cv2.bitwise_and(image, image, mask=mask)
-
+        # 140 - 165 S30
     hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
-    mask2 = cv2.inRange(hsv, np.array([160, 80, 10]), np.array([180, 255, 255]))
+    mask_hsv_lower = cv2.inRange(hsv, np.array([0, 40, 10]), np.array([10, 255, 255]))
+    mask_hsv_upper = cv2.inRange(hsv, np.array([160, 5, 10]), np.array([180, 255, 255]))
+    mask2 = mask_hsv_upper + mask_hsv_lower
     output_hsv = cv2.bitwise_and(hsv, hsv, mask=mask2)
 
-    cv2.imshow("images", np.hstack([image, output, hsv, output_hsv]))
+    # powrot z hsv do RGB i z RGB do szarosci
+    image_RGB = cv2.cvtColor(output_hsv, cv2.COLOR_HSV2BGR)
+    image_HSV_RGB_GREY = cv2.cvtColor(image_RGB, cv2.COLOR_BGR2GRAY)
+    # dobre parametry kółek (341/500 nie znalezionych)
+    image_HSV_RGB_GREY = cv2.medianBlur(image_HSV_RGB_GREY, 5)
+    circles3 = cv2.HoughCircles(image_HSV_RGB_GREY, cv2.HOUGH_GRADIENT, 1, 100,
+                                param1=50, param2=25, minRadius=0, maxRadius=0)
+    outputHsvDark = None
+    if circles3 is None:
+        mask_hsv_lower = cv2.inRange(hsv, np.array([0, 40, 10]), np.array([10, 255, 255]))
+        dark_mask = cv2.inRange(hsv, np.array([115, 5, 10]), np.array([130, 255, 255]))
+        mask2 = dark_mask + mask_hsv_lower
+        outputHsvDark = cv2.bitwise_and(hsv, hsv, mask=mask2)
+        image_RGB = cv2.cvtColor(outputHsvDark, cv2.COLOR_HSV2BGR)
+        image_HSV_RGB_GREY = cv2.cvtColor(image_RGB, cv2.COLOR_BGR2GRAY)
+        image_HSV_RGB_GREY = cv2.medianBlur(image_HSV_RGB_GREY, 5)
+        circles3 = cv2.HoughCircles(image_HSV_RGB_GREY, cv2.HOUGH_GRADIENT, 1, 100,
+                                    param1=50, param2=25, minRadius=0, maxRadius=0)
+
+    try:
+        circles = np.uint16(np.around(circles3))
+        for i in circles[0, :]:
+            # draw the outer circle
+            cv2.circle(image, (i[0], i[1]), i[2], (0, 255, 0), 2)
+            # draw the center of the circle
+            cv2.circle(image, (i[0], i[1]), 2, (0, 255, 0), 3)
+    except:
+        print('Problem z kółkami szarosci')
+
+
+    if outputHsvDark is not None:
+        cv2.imshow(f"images{path_}", np.hstack([image, output_hsv, outputHsvDark]))
+    else:
+        cv2.imshow(f"images{path_}", np.hstack([image, output_hsv]))
     cv2.waitKey(0)
 
 
