@@ -1,6 +1,8 @@
 import numpy as np
 import cv2
 import os
+import xml.etree.ElementTree as ET
+import os
 
 def loadingImage():
     # load the image
@@ -13,6 +15,36 @@ def loadingImage():
             pathOther.append(f'D:\programy_SI\PROJEKT_SI\/otherTrain\/road{i}.png')
     return pathSpeedSights, pathOther
 
+def makingDictionaryForLearning():
+    i=0
+    arrayWithDicionaries = []
+    while os.path.isfile(f'D:\programy_SI\PROJEKT_SI\/annotations\/road{i}.xml'):
+        tree = ET.parse(f'D:\programy_SI\PROJEKT_SI\/annotations\/road{i}.xml')
+        i+=1
+        root = tree.getroot()
+        fileName = root.find('filename').text
+        imageSize = root.find('size')
+        if (os.path.isfile(f'D:\programy_SI\PROJEKT_SI\speedLimitsTrain\/{fileName}')) or (os.path.isfile(f'D:\programy_SI\PROJEKT_SI\otherTrain\/{fileName}')) : # checking if image from xml is to learn
+            for object in root.findall('object'):
+                bndbox = object.find('bndbox')
+                bndboxDict = {"xmin": bndbox[0].text,
+                               "ymin": bndbox[1].text,
+                               "xmax": bndbox[2].text,
+                               "ymax": bndbox[3].text}
+                imageDictionary = {
+                    "filename" : fileName,
+                    "width" : imageSize.find('width').text,
+                    "height" : imageSize.find('height').text,
+                    "name" : object.find('name').text,
+                    "bndbox" : bndboxDict
+                }
+                arrayWithDicionaries.append(imageDictionary)
+        else:
+            continue
+    print(len(arrayWithDicionaries))
+    print(arrayWithDicionaries[0]["bndbox"]["xmin"])        #reference to a parameter in dictionary
+    return arrayWithDicionaries
+
 def makingMaskForCircles(hsvImage, lowerMaskL, lowerMaskH, higherMaskL, higherMaskH):
     lowerMask = cv2.inRange(hsvImage, lowerMaskL, lowerMaskH)
     higherMask = cv2.inRange(hsvImage, higherMaskL, higherMaskH)
@@ -22,7 +54,6 @@ def makingMaskForCircles(hsvImage, lowerMaskL, lowerMaskH, higherMaskL, higherMa
     imageGREY = cv2.cvtColor(imageRGB, cv2.COLOR_BGR2GRAY)  # RGB to GRAY
     bluredImage = cv2.medianBlur(imageGREY, 5)  # blur for circles
     return bluredImage
-
 
 def circleOnImage(path):
     falseCircles = 0;
@@ -67,8 +98,9 @@ def circleOnImage(path):
     print(falseCircles)
 
 def main():
-    pathsWithSpeedSights, pathsWithOther = loadingImage()
-    circleOnImage(pathsWithSpeedSights)
+    #pathsWithSpeedSights, pathsWithOther = loadingImage()
+    #circleOnImage(pathsWithSpeedSights)
+    arrayDictionaryWithImageParameters = makingDictionaryForLearning()
 
 if __name__ == '__main__':
     main()
