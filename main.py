@@ -7,6 +7,7 @@ from sklearn.metrics import confusion_matrix
 import pandas
 
 
+
 def loadingImage():
     # load the image
     pathSpeedSights = []
@@ -79,9 +80,6 @@ def learningBOW(imageDictionary):
             try:
                 grey = cv2.cvtColor(sightPart, cv2.COLOR_BGR2GRAY)
                 kp = sift.detect(grey, None)
-                # img = cv2.drawKeypoints(grey, kp, image)
-                # cv2.imshow('sift_keypoints', img)
-                # cv2.waitKey(0)
                 kp, desc = sift.compute(grey, kp)
                 if desc is not None:
                     bow.add(desc)
@@ -114,9 +112,17 @@ def extract(imageDictionary):
     return imageDictionary
 
 
-def train(data):
+def train(imageDictionary):
     print("LETS GO WITH TRAINING!")
-    
+    clf = RandomForestClassifier(100)
+    y_train = []
+    x_train = np.empty((1, 4))
+    for sample in imageDictionary:
+        y_train.append(sample["status"])
+        x_train = np.vstack((x_train, sample["desc"]))
+    clf.fit(x_train[1:], y_train)
+    return clf
+
 
 def makingMaskForCircles(hsvImage, lowerMaskL, lowerMaskH, higherMaskL, higherMaskH):
     lowerMask = cv2.inRange(hsvImage, lowerMaskL, lowerMaskH)
@@ -176,15 +182,19 @@ def main():
     pathsWithSpeedSights, pathsWithOther = loadingImage()
     # summedPaths = pathsWithSpeedSights + pathsWithOther
     # circleOnImage(pathsWithSpeedSights)
-    arrayDictionaryWithImageParameters = makingDictionaryForLearning()
-    learningBOW(arrayDictionaryWithImageParameters)
-    arrayDictionaryWithImageParameters = extract(
-        arrayDictionaryWithImageParameters)  # dictionary with added descriptor parameters
-    # print('dictionary: ', arrayDictionaryWithImageParameters[0])
-    # for n in arrayDictionaryWithImageParameters:
-    #     print(n["name"], n["desc"])
-    print(len(arrayDictionaryWithImageParameters))
+    dictWithImgPar = makingDictionaryForLearning()
+    learningBOW(dictWithImgPar)
+    dictWithImgPar = extract(dictWithImgPar)  # dictionary with added descriptor parameters
 
+    # print('dictionary: ', dictWithImgPar[0])
+    # for n in dictWithImgPar:
+    #     print(n["name"], n["desc"])
+    afterTrain = train(dictWithImgPar)
+
+
+    # print("Predict: ", afterTrain.predict([[0.2, 0.3, 0.1, 0.4]]))
+    # print("Predict2: ", afterTrain.predict([[0.25, 0.05, 0.53, 0.17]]))
+    # print("Predict3: ", afterTrain.predict([[0.2857143,  0.07142857, 0.2857143,  0.35714287]]))
 
 if __name__ == '__main__':
     main()
