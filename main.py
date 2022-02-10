@@ -5,8 +5,7 @@ import os
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import confusion_matrix
 import pandas
-
-
+from sklearn import metrics
 
 def loadingImage():
     # load the image
@@ -20,7 +19,7 @@ def loadingImage():
     return pathSpeedSights, pathOther
 
 
-def makingDictionaryForLearning():
+def makingDictionaryForLearning(speedSightsFolder, otherFolder):
     i = 0
     arrayWithDicionaries = []
     badDimensions = 0
@@ -30,9 +29,9 @@ def makingDictionaryForLearning():
         root = tree.getroot()
         fileName = root.find('filename').text
         imageSize = root.find('size')
-        if (os.path.isfile(f'D:\programy_SI\PROJEKT_SI\speedLimitsTrain\/{fileName}')) or (
+        if (os.path.isfile(f'D:\programy_SI\PROJEKT_SI\/{speedSightsFolder}\/{fileName}')) or (
                 os.path.isfile(
-                    f'D:\programy_SI\PROJEKT_SI\otherTrain\/{fileName}')):  # checking if image from xml is to learn
+                    f'D:\programy_SI\PROJEKT_SI\/{otherFolder}\/{fileName}')):  # checking if image from xml is to learn
             for ob in root.findall('object'):
                 bndbox = ob.find('bndbox')
                 bndboxDict = {"xmin": int(bndbox[0].text),
@@ -62,14 +61,14 @@ def makingDictionaryForLearning():
                     arrayWithDicionaries.append(imageDictionary)
         else:
             continue
-    print(len(arrayWithDicionaries))
-    print(arrayWithDicionaries[0]["bndbox"]["xmin"])  # reference to a parameter in dictionary
-    print("ilosc odrzuconych wycinkow: ", badDimensions)
+    # print(len(arrayWithDicionaries))
+    # print(arrayWithDicionaries[0]["bndbox"]["xmin"])  # reference to a parameter in dictionary
+    # print("ilosc odrzuconych wycinkow: ", badDimensions)
     return arrayWithDicionaries
 
 
 def learningBOW(imageDictionary):
-    dictionarySize = 4
+    dictionarySize = 100
     bow = cv2.BOWKMeansTrainer(dictionarySize)
     sift = cv2.SIFT_create()
     for part in imageDictionary:
@@ -104,7 +103,6 @@ def extract(imageDictionary):
             sightPart = image[bndbox["ymin"]:bndbox["ymax"], bndbox["xmin"]:bndbox["xmax"]]
             grey = cv2.cvtColor(sightPart, cv2.COLOR_BGR2GRAY)
             desc = bow.compute(grey, sift.detect(grey))  # input KeypointDescriptor, output imgDescriptor
-            # print("extract desc: ", desc)
             if desc is not None:
                 part.update({'desc': desc})
             else:
@@ -113,16 +111,35 @@ def extract(imageDictionary):
 
 
 def train(imageDictionary):
-    print("LETS GO WITH TRAINING!")
     clf = RandomForestClassifier(100)
     y_train = []
-    x_train = np.empty((1, 4))
+    x_train = np.empty((1, 100))
     for sample in imageDictionary:
         y_train.append(sample["status"])
         x_train = np.vstack((x_train, sample["desc"]))
     clf.fit(x_train[1:], y_train)
     return clf
 
+def predictImage(rf, data):
+    for sample in data:
+        sample.update({"predictedStatus" : rf.predict(sample['desc'])})
+
+def accuracyCalculate(dataTest):
+    trueStatus = []
+    predictedStatus = []
+    for data in dataTest:
+        trueStatus.append(data["status"])
+        predictedStatus.append(data["predictedStatus"])
+    print("Accuracy:", metrics.accuracy_score(trueStatus, predictedStatus))
+
+def printingTestImages(dataDict):
+    for data in dataDict:
+        image = cv2.imread(f'D:\programy_SI\PROJEKT_SI\/images\/{data["fileName"]}')
+        bndbox = data["bndbox"]
+        sightPart = image[bndbox["ymin"]:bndbox["ymax"], bndbox["xmin"]:bndbox["xmax"]]
+        cv2.imshow(f"status: {data['status']}, predicted: {data['predictedStatus']}", sightPart)
+        print(f"status: {data['status']}, predicted: {data['predictedStatus']}")
+        cv2.waitKey(0)
 
 def makingMaskForCircles(hsvImage, lowerMaskL, lowerMaskH, higherMaskL, higherMaskH):
     lowerMask = cv2.inRange(hsvImage, lowerMaskL, lowerMaskH)
@@ -179,22 +196,27 @@ def circleOnImage(path):
 
 
 def main():
-    pathsWithSpeedSights, pathsWithOther = loadingImage()
+    # pathsWithSpeedSights, pathsWithOther = loadingImage()
     # summedPaths = pathsWithSpeedSights + pathsWithOther
     # circleOnImage(pathsWithSpeedSights)
-    dictWithImgPar = makingDictionaryForLearning()
-    learningBOW(dictWithImgPar)
-    dictWithImgPar = extract(dictWithImgPar)  # dictionary with added descriptor parameters
+    print("making dictionary for Train Data")
+    dataTrain = makingDictionaryForLearning("speedLimitsTrain", "otherTrain")
+    print("learning BOW")
+    learningBOW(dataTrain)
+    print("extract data Train")
+    dataTrain = extract(dataTrain)  # dictionary with added descriptor parameters
+    print("traning data")
+    afterTrain = train(dataTrain)
+    print("making dictionary for Test Data")
+    dataTest = makingDictionaryForLearning("speedLimitsTest", "otherTest")
+    print("extract data Test")
+    dataTest = extract(dataTest)
+    print("predict Image")
+    predictImage(afterTrain, dataTest)
+    print("calculate Accuracy")
+    accuracyCalculate(dataTest)
 
-    # print('dictionary: ', dictWithImgPar[0])
-    # for n in dictWithImgPar:
-    #     print(n["name"], n["desc"])
-    afterTrain = train(dictWithImgPar)
-
-
-    # print("Predict: ", afterTrain.predict([[0.2, 0.3, 0.1, 0.4]]))
-    # print("Predict2: ", afterTrain.predict([[0.25, 0.05, 0.53, 0.17]]))
-    # print("Predict3: ", afterTrain.predict([[0.2857143,  0.07142857, 0.2857143,  0.35714287]]))
+    #printingTestImages(dataTest)
 
 if __name__ == '__main__':
     main()
