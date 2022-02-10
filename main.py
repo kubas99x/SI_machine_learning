@@ -1,8 +1,10 @@
 import numpy as np
 import cv2
-import os
 import xml.etree.ElementTree as ET
 import os
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import confusion_matrix
+import pandas
 
 
 def loadingImage():
@@ -20,6 +22,7 @@ def loadingImage():
 def makingDictionaryForLearning():
     i = 0
     arrayWithDicionaries = []
+    badDimensions = 0
     while os.path.isfile(f'D:\programy_SI\PROJEKT_SI\/annotations\/road{i}.xml'):
         tree = ET.parse(f'D:\programy_SI\PROJEKT_SI\/annotations\/road{i}.xml')
         i += 1
@@ -27,7 +30,8 @@ def makingDictionaryForLearning():
         fileName = root.find('filename').text
         imageSize = root.find('size')
         if (os.path.isfile(f'D:\programy_SI\PROJEKT_SI\speedLimitsTrain\/{fileName}')) or (
-        os.path.isfile(f'D:\programy_SI\PROJEKT_SI\otherTrain\/{fileName}')):  # checking if image from xml is to learn
+                os.path.isfile(
+                    f'D:\programy_SI\PROJEKT_SI\otherTrain\/{fileName}')):  # checking if image from xml is to learn
             for ob in root.findall('object'):
                 bndbox = ob.find('bndbox')
                 bndboxDict = {"xmin": int(bndbox[0].text),
@@ -38,6 +42,7 @@ def makingDictionaryForLearning():
                 ysize = int(bndboxDict["ymax"]) - int(bndboxDict["ymin"])
                 if ((xsize < int(imageSize.find('width').text) / 10) or (
                         ysize < int(imageSize.find('height').text) / 10)):
+                    badDimensions += 1
                     continue
                 else:
                     status = None
@@ -58,29 +63,60 @@ def makingDictionaryForLearning():
             continue
     print(len(arrayWithDicionaries))
     print(arrayWithDicionaries[0]["bndbox"]["xmin"])  # reference to a parameter in dictionary
+    print("ilosc odrzuconych wycinkow: ", badDimensions)
     return arrayWithDicionaries
 
 
 def learningBOW(imageDictionary):
-    dictionarySize = 2
+    dictionarySize = 4
     bow = cv2.BOWKMeansTrainer(dictionarySize)
     sift = cv2.SIFT_create()
     for part in imageDictionary:
         if os.path.isfile(f'D:\programy_SI\PROJEKT_SI\/images\/{part["fileName"]}'):
             image = cv2.imread(f'D:\programy_SI\PROJEKT_SI\/images\/{part["fileName"]}')
             bndbox = part["bndbox"]
-            sightPart = image[bndbox["xmin"]:bndbox["xmax"], bndbox["ymin"]:bndbox["ymax"]]
-            print(bndbox["xmin"],bndbox["xmax"],sightPart.shape)
-            grey = cv2.cvtColor(sightPart, cv2.COLOR_BGR2GRAY)
-            cv2.imshow(f"images", grey)
-            cv2.waitKey(0)
-            kp = sift.detect(grey, None)
-            kp, desc = sift.compute(grey, kp)
-            if desc is not None:
-                bow.add(desc)
+            sightPart = image[bndbox["ymin"]:bndbox["ymax"], bndbox["xmin"]:bndbox["xmax"]]
+            try:
+                grey = cv2.cvtColor(sightPart, cv2.COLOR_BGR2GRAY)
+                kp = sift.detect(grey, None)
+                # img = cv2.drawKeypoints(grey, kp, image)
+                # cv2.imshow('sift_keypoints', img)
+                # cv2.waitKey(0)
+                kp, desc = sift.compute(grey, kp)
+                if desc is not None:
+                    bow.add(desc)
+            except:
+                print("error in sift")
     dictionary = bow.cluster()
-    np.save('dict.npy', dictionary)
+    np.save('dict.npy', dictionary)  # zapisanie naszego slownika do pliku
 
+
+def extract(imageDictionary):
+    # SIFT jest algorytmem do wyznaczania wlasciwosci danego zdjecia
+    # FlannBasedMatcher sluzy do znajdowania najblizszych matchy dla parametrow sift
+    sift = cv2.SIFT_create()
+    flann = cv2.FlannBasedMatcher_create()  # finds the best matches
+    bow = cv2.BOWImgDescriptorExtractor(sift, flann)  # descriptor extractor, desriptor matcher
+    dictionary = np.load('dict.npy')  # size 2x128
+    bow.setVocabulary(dictionary)
+    for part in imageDictionary:
+        if os.path.isfile(f'D:\programy_SI\PROJEKT_SI\/images\/{part["fileName"]}'):
+            image = cv2.imread(f'D:\programy_SI\PROJEKT_SI\/images\/{part["fileName"]}')
+            bndbox = part["bndbox"]
+            sightPart = image[bndbox["ymin"]:bndbox["ymax"], bndbox["xmin"]:bndbox["xmax"]]
+            grey = cv2.cvtColor(sightPart, cv2.COLOR_BGR2GRAY)
+            desc = bow.compute(grey, sift.detect(grey))  # input KeypointDescriptor, output imgDescriptor
+            # print("extract desc: ", desc)
+            if desc is not None:
+                part.update({'desc': desc})
+            else:
+                part.update({'desc': np.zeros((1, len(dictionary)))})
+    return imageDictionary
+
+
+def train(data):
+    print("LETS GO WITH TRAINING!")
+    
 
 def makingMaskForCircles(hsvImage, lowerMaskL, lowerMaskH, higherMaskL, higherMaskH):
     lowerMask = cv2.inRange(hsvImage, lowerMaskL, lowerMaskH)
@@ -138,10 +174,16 @@ def circleOnImage(path):
 
 def main():
     pathsWithSpeedSights, pathsWithOther = loadingImage()
-    summedPaths = pathsWithSpeedSights + pathsWithOther
+    # summedPaths = pathsWithSpeedSights + pathsWithOther
     # circleOnImage(pathsWithSpeedSights)
     arrayDictionaryWithImageParameters = makingDictionaryForLearning()
     learningBOW(arrayDictionaryWithImageParameters)
+    arrayDictionaryWithImageParameters = extract(
+        arrayDictionaryWithImageParameters)  # dictionary with added descriptor parameters
+    # print('dictionary: ', arrayDictionaryWithImageParameters[0])
+    # for n in arrayDictionaryWithImageParameters:
+    #     print(n["name"], n["desc"])
+    print(len(arrayDictionaryWithImageParameters))
 
 
 if __name__ == '__main__':
