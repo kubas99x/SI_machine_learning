@@ -154,12 +154,14 @@ def makingMaskForCircles(hsvImage, lowerMaskL, lowerMaskH, higherMaskL, higherMa
     return bluredImage
 
 
-def circleOnImage(path):
+def circleOnImage(dataDict):
     falseCircles = 0;
-    for path_ in path:
+    for data in dataDict:
+        path = data["path"] + "\/images\/" + data["fileName"]
+        print("path: " ,path)
         circles4 = None
         circles5 = None
-        image = cv2.imread(path_)
+        image = cv2.imread(path)
         hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
 
         bluredImage1 = makingMaskForCircles(hsv, np.array([0, 120, 10]), np.array([10, 255, 255]),
@@ -189,6 +191,10 @@ def circleOnImage(path):
                 cv2.circle(image, (i[0], i[1]), i[2], (0, 255, 0), 2)
                 # draw the center of the circle
                 cv2.circle(image, (i[0], i[1]), 2, (0, 255, 0), 3)
+                xmin = i[0] - i[2] - 10
+                xmax = i[0] + i[2] + 10
+                ymin = i[1] - i[2] - 10
+                ymax = i[1] + i[2] + 10
         except:
             falseCircles += 1
 
@@ -201,25 +207,26 @@ def main():
     # pathsWithSpeedSights, pathsWithOther = loadingImage()
     # summedPaths = pathsWithSpeedSights + pathsWithOther
     # circleOnImage(pathsWithSpeedSights)
-    print("making dictionary for Train Data")
-    dataTrain = makingDictionaryForLearning("train")
-    print("learning BOW")
-    learningBOW(dataTrain)
-    print("extract data Train")
-    dataTrain = extract(dataTrain)  # dictionary with added descriptor parameters
-    print("traning data")
-    afterTrain = train(dataTrain)
-    print("making dictionary for Test Data")
-    dataTest = makingDictionaryForLearning("test")
-    print("extract data Test")
-    dataTest = extract(dataTest)
-    print("predict Image")
-    predictImage(afterTrain, dataTest)
-    print("calculate Accuracy")
-    accuracyCalculate(dataTest)
+    # print("making dictionary for Train Data")
+    # dataTrain = makingDictionaryForLearning("train")
+    # print("learning BOW")
+    # learningBOW(dataTrain)
+    # print("extract data Train")
+    # dataTrain = extract(dataTrain)  # dictionary with added descriptor parameters
+    # print("traning data")
+    # afterTrain = train(dataTrain)
+    # print("making dictionary for Test Data")
+    # dataTest = makingDictionaryForLearning("test")
+    # print("extract data Test")
+    # dataTest = extract(dataTest)
+    # print("predict Image")
+    # predictImage(afterTrain, dataTest)
+    # print("calculate Accuracy")
+    # accuracyCalculate(dataTest)
 
     # printingTestImages(dataTest)
 
-
+    dataTest = makingDictionaryForLearning("test")
+    circleOnImage(dataTest)
 if __name__ == '__main__':
     main()
