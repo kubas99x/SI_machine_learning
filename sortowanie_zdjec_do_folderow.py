@@ -8,7 +8,6 @@ from os import walk
 # "train" or "test"
 def makingDictionaryForLearning(whatFolder):
     arrayWithDicionaries = []
-    badDimensions = 0
     path = os.getcwd()
     upperPath = os.path.abspath(os.path.join(path, os.pardir))
     mypath = upperPath + "\/" + whatFolder + "\/annotations"
@@ -17,6 +16,7 @@ def makingDictionaryForLearning(whatFolder):
         tree = ET.parse(f'{mypath}\/{object}')
         root = tree.getroot()
         imageSize = root.find('size')
+        partDictionaryArray = []
         for ob in root.findall('object'):
             bndbox = ob.find('bndbox')
             bndboxDict = {"xmin": int(bndbox[0].text),
@@ -27,24 +27,32 @@ def makingDictionaryForLearning(whatFolder):
             ysize = int(bndboxDict["ymax"]) - int(bndboxDict["ymin"])
             if ((xsize < int(imageSize.find('width').text) / 10) or (
                     ysize < int(imageSize.find('height').text) / 10)):
-                badDimensions += 1
                 continue
             else:
-                status = None
                 if ob.find('name').text == "speedlimit":
                     status = 1
                 else:
                     status = 2
-                imageDictionary = {
-                    "fileName": root.find('filename').text,
-                    "width": imageSize.find('width').text,
-                    "height": imageSize.find('height').text,
-                    "name": ob.find('name').text,
-                    "bndbox": bndboxDict,
-                    "status": status  # 1 if speedsight, 2 if other
+                partDicionary = {
+                    "name" : ob.find('name').text,
+                    "bndboxDict": bndboxDict,
+                    "status" : status
                 }
-                arrayWithDicionaries.append(imageDictionary)
+                partDictionaryArray.append(partDicionary)
+        if not partDictionaryArray: #jezeli wszystkie wycinki w obrazie byly za male, pomijamy to zdjecie
+            continue
+        else:
+            imageDictionary = {
+                "fileName": root.find('filename').text,
+                "width": imageSize.find('width').text,
+                "height": imageSize.find('height').text,
+                "path": upperPath + "\/" + whatFolder,
+                "partDicionaries" : partDictionaryArray
+                }
+            arrayWithDicionaries.append(imageDictionary)
     return arrayWithDicionaries
+
+
 def sortingSpeedImages(imageNames):
     n = 0;
     for fileName in imageNames:
