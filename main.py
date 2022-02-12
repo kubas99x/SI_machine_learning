@@ -114,6 +114,7 @@ def predictImage(rf, data):
     for sample in data:
         for object in sample["partDictionaries"]:
             object.update({"predictedStatus": rf.predict(object['desc'])})
+    return data
 
 
 def accuracyCalculate(dataTest):  # only with test images using xml
@@ -160,7 +161,34 @@ def detectInformation(dataTest):
     print("ilosc zdjec:", len(dataTest))
     print("ilosc wycinkow:", iloscZnakow)
 
-
+def classifyInput():
+    upperPath = os.path.abspath(os.path.join(os.getcwd(), os.pardir))
+    mypath = upperPath + "\/" + "test"
+    dataClassify = []
+    numberOfFiles = input()
+    for number in range(int(numberOfFiles)):
+        filename = input()
+        numberOfParts = input()
+        partDictionaryArray = []
+        classifyDict = {"fileName": filename,
+                        "path": mypath,
+                        "partDictionaries": partDictionaryArray}
+        for n in range(int(numberOfParts)):
+            xmin, xmax, ymin, ymax = input().split()
+            tmpDictionary = {"xmin": int(xmin),
+                             "xmax": int(xmax),
+                             "ymin": int(ymin),
+                             "ymax": int(ymax)}
+            classifyDict["partDictionaries"].append(tmpDictionary)
+        dataClassify.append(classifyDict)
+    return dataClassify
+def classifyReturn(dataTest):
+    for data in dataTest:
+        for part in data["partDictionaries"]:
+            if part["predictedStatus"] == 1:
+                print("speedlimit")
+            else:
+                print("other")
 def makingMaskForCircles(hsvImage, lowerMaskL, lowerMaskH, higherMaskL, higherMaskH):
     lowerMask = cv2.inRange(hsvImage, lowerMaskL, lowerMaskH)
     higherMask = cv2.inRange(hsvImage, higherMaskL, higherMaskH)
@@ -250,7 +278,7 @@ def main():
         print("extract data Test")
         dataTest = extract(dataTest)
         print("predict Image")
-        predictImage(afterTrain, dataTest)
+        dataTest = predictImage(afterTrain, dataTest)
         print("calculate Accuracy")
         accuracyCalculate(dataTest)
     elif x == "detect":
@@ -261,20 +289,19 @@ def main():
         print("extract data Test")
         dataTest = extract(dataTest)
         print("predict Image")
-        predictImage(afterTrain, dataTest)
+        dataTest = predictImage(afterTrain, dataTest)
         print("informations about found sights")
         detectInformation(dataTest)
     elif x == "classify":
-        numberOfFiles = input()
-        for number in range(numberOfFiles):
-            numberOfParts = input()
-            for n in range(numberOfParts):
-                print("classify not ready")
+        dataClassify = classifyInput()
+        dataClassify = extract(dataClassify)
+        dataClassify = predictImage(afterTrain, dataClassify)
+        classifyReturn(dataClassify)
     else:
         print("there is no command like ", x)
 
-    print("printing chosen parts")
-    printingChosenparts(dataTest)
+    #print("printing chosen parts")
+    #printingChosenparts(dataTest)
 
 
 if __name__ == '__main__':
