@@ -265,7 +265,11 @@ def main():
         print("informations about found sights")
         detectInformation(dataTest)
     elif x == "classify":
-        print("classify not ready")
+        numberOfFiles = input()
+        for number in range(numberOfFiles):
+            numberOfParts = input()
+            for n in range(numberOfParts):
+                print("classify not ready")
     else:
         print("there is no command like ", x)
 
