@@ -3,11 +3,10 @@ import cv2
 import xml.etree.ElementTree as ET
 import os
 from sklearn.ensemble import RandomForestClassifier
-from sklearn import metrics
 from os import walk
+import random
 
 
-# train or test
 def makingDictionaryForLearning():
     arrayWithDicionaries = []
     path = os.getcwd()
@@ -56,6 +55,50 @@ def makingDictionaryForLearning():
             }
             arrayWithDicionaries.append(imageDictionary)
     return arrayWithDicionaries
+
+
+def addingPartsToTrainData(dataTrain):
+    for object in dataTrain:
+        if len(object["partDictionaries"]) == 1 and object["partDictionaries"][0]["status"] == 2:
+            for n in range(4):
+                xmin = random.randint(0, int(object["width"]) - 55)
+                xmax = xmin + 50
+                ymin = random.randint(0, int(object["height"]) - 55)
+                ymax = ymin + 50
+                tmpDictionary = {
+                    "xmin": xmin,
+                    "xmax": xmax,
+                    "ymin": ymin,
+                    "ymax": ymax,
+                    "status": 2
+                }
+                object["partDictionaries"].append(tmpDictionary)
+        elif len(object["partDictionaries"]) == 1 and object["partDictionaries"][0]["status"] == 1:
+            for n in range(2):
+                xminOryginal = object["partDictionaries"][0]["xmin"]
+                xmaxOryginal = object["partDictionaries"][0]["xmax"]
+                yminOryginal = object["partDictionaries"][0]["ymin"]
+                ymaxOryginal = object["partDictionaries"][0]["ymax"]
+                # liczby, by iou nie było mniejsze niż 50%
+                number = random.randrange(-15, 15) / 100
+                xmin = xminOryginal - number * (xmaxOryginal - xminOryginal)
+                xmax = xmaxOryginal - number * (xmaxOryginal - xminOryginal)
+                number = random.randrange(-15, 15) / 100
+                ymin = yminOryginal - number * (ymaxOryginal - yminOryginal)
+                ymax = ymaxOryginal - number * (ymaxOryginal - yminOryginal)
+                if (xmin < 0) or (xmax > int(object["width"])):
+                    continue
+                if (ymin < 0) or (ymax > int(object["height"])):
+                    continue
+                tmpDictionary = {
+                    "xmin": int(xmin),
+                    "xmax": int(xmax),
+                    "ymin": int(ymin),
+                    "ymax": int(ymax),
+                    "status": 1
+                }
+                object["partDictionaries"].append(tmpDictionary)
+    return dataTrain
 
 
 def makingDictionaryForTest():
@@ -109,7 +152,6 @@ def extract(imageDictionary):
         image = cv2.imread(f'{part["path"]}\/images\/{part["fileName"]}')
         if len(part["partDictionaries"]) != 0:  # it could be when we are taking parts from circles
             for object in part["partDictionaries"]:
-                print(object["ymin"], object["ymax"], object["xmin"], object["xmax"])
                 sightPart = image[object["ymin"]:object["ymax"], object["xmin"]:object["xmax"]]
                 grey = cv2.cvtColor(sightPart, cv2.COLOR_BGR2GRAY)
                 desc = bow.compute(grey, sift.detect(grey))  # input KeypointDescriptor, output imgDescriptor
@@ -170,8 +212,8 @@ def detectInformation(dataTest):
                 if part["predictedStatus"] == 1:
                     print(part["xmin"], part["xmax"], part["ymin"], part["ymax"], )
                     iloscZnakow += 1
-    print("ilosc zdjec:", len(dataTest))
-    print("ilosc wycinkow:", iloscZnakow)
+    # print("ilosc zdjec:", len(dataTest))
+    # print("ilosc wycinkow:", iloscZnakow)
 
 
 def classifyInput():
@@ -275,6 +317,8 @@ def circleOnImage(dataDict):
 def main():
     print("making dictionary for Train Data")
     dataTrain = makingDictionaryForLearning()
+    print("adding parts to Train Data")
+    dataTrain = addingPartsToTrainData(dataTrain)
     print("learning BOW")
     learningBOW(dataTrain)
     print("extract data Train")
@@ -295,17 +339,15 @@ def main():
         dataTest = predictImage(afterTrain, dataTest)
         print("informations about found sights")
         detectInformation(dataTest)
+        #printingChosenparts(dataTest)
     elif x == "classify":
         dataClassify = classifyInput()
         dataClassify = extract(dataClassify)
         dataClassify = predictImage(afterTrain, dataClassify)
         classifyReturn(dataClassify)
-        printingChosenparts(dataClassify)
+        #printingChosenparts(dataClassify)
     else:
         print("there is no command like ", x)
-
-    # print("printing chosen parts")
-    # printingChosenparts(dataTest)
 
 
 if __name__ == '__main__':
