@@ -3,23 +3,11 @@ import cv2
 import xml.etree.ElementTree as ET
 import os
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import confusion_matrix
-import pandas
 from sklearn import metrics
 from os import walk
 
 
-def loadingImage():
-    # load the image
-    pathSpeedSights = []
-    pathOther = []
-    for i in range(900):
-        if os.path.isfile(f'D:\programy_SI\PROJEKT_SI\/speedLimitsTrain\/road{i}.png'):
-            pathSpeedSights.append(f'D:\programy_SI\PROJEKT_SI\/speedLimitsTrain\/road{i}.png')
-        elif os.path.isfile(f'D:\programy_SI\PROJEKT_SI\/otherTrain\/road{i}.png'):
-            pathOther.append(f'D:\programy_SI\PROJEKT_SI\/otherTrain\/road{i}.png')
-    return pathSpeedSights, pathOther
-#train or test
+# train or test
 def makingDictionaryForLearning(whatFolder):
     arrayWithDicionaries = []
     path = os.getcwd()
@@ -27,18 +15,18 @@ def makingDictionaryForLearning(whatFolder):
     mypath = upperPath + "\/" + whatFolder + "\/annotations"
     filenames = next(walk(mypath), (None, None, []))[2]
     for object in filenames:
-        tree = ET.parse(f'{mypath}\/{object}')
+        tree = ET.parse(f'{mypath}\{object}')
         root = tree.getroot()
         imageSize = root.find('size')
         partDictionaryArray = []
         for ob in root.findall('object'):
             bndbox = ob.find('bndbox')
-            bndboxDict = {"xmin": int(bndbox[0].text),
-                          "ymin": int(bndbox[1].text),
-                          "xmax": int(bndbox[2].text),
-                          "ymax": int(bndbox[3].text)}
-            xsize = int(bndboxDict["xmax"]) - int(bndboxDict["xmin"])
-            ysize = int(bndboxDict["ymax"]) - int(bndboxDict["ymin"])
+            xmin = int(bndbox[0].text)
+            ymin = int(bndbox[1].text)
+            xmax = int(bndbox[2].text)
+            ymax = int(bndbox[3].text)
+            xsize = xmax - xmin
+            ysize = ymax - ymin
             if ((xsize < int(imageSize.find('width').text) / 10) or (
                     ysize < int(imageSize.find('height').text) / 10)):
                 continue
@@ -48,12 +36,15 @@ def makingDictionaryForLearning(whatFolder):
                 else:
                     status = 2
                 partDicionary = {
-                    "name" : ob.find('name').text,
-                    "bndboxDict": bndboxDict,
-                    "status" : status
+                    "name": ob.find('name').text,
+                    "xmin": xmin,
+                    "xmax": xmax,
+                    "ymin": ymin,
+                    "ymax": ymax,
+                    "status": status
                 }
                 partDictionaryArray.append(partDicionary)
-        if not partDictionaryArray: #jezeli wszystkie wycinki w obrazie byly za male, pomijamy to zdjecie
+        if not partDictionaryArray:  # jezeli wszystkie wycinki w obrazie byly za male, pomijamy to zdjecie
             continue
         else:
             imageDictionary = {
@@ -61,10 +52,11 @@ def makingDictionaryForLearning(whatFolder):
                 "width": imageSize.find('width').text,
                 "height": imageSize.find('height').text,
                 "path": upperPath + "\/" + whatFolder,
-                "partDictionaries" : partDictionaryArray
-                }
+                "partDictionaries": partDictionaryArray
+            }
             arrayWithDicionaries.append(imageDictionary)
     return arrayWithDicionaries
+
 
 def learningBOW(imageDictionary):
     dictionarySize = 100
@@ -73,15 +65,11 @@ def learningBOW(imageDictionary):
     for part in imageDictionary:
         image = cv2.imread(f'{part["path"]}\/images\/{part["fileName"]}')
         for object in part["partDictionaries"]:
-            bndbox = object["bndboxDict"]
-            sightPart = image[bndbox["ymin"]:bndbox["ymax"], bndbox["xmin"]:bndbox["xmax"]]
+            sightPart = image[object["ymin"]:object["ymax"], object["xmin"]:object["xmax"]]
             try:
                 grey = cv2.cvtColor(sightPart, cv2.COLOR_BGR2GRAY)
                 kp = sift.detect(grey, None)
                 kp, desc = sift.compute(grey, kp)
-                # computing in rgb:
-                # kp = sift.detect(sightPart, None)
-                # kp, desc = sift.compute(sightPart, kp)
                 if desc is not None:
                     bow.add(desc)
             except:
@@ -91,8 +79,6 @@ def learningBOW(imageDictionary):
 
 
 def extract(imageDictionary):
-    # SIFT jest algorytmem do wyznaczania wlasciwosci danego zdjecia
-    # FlannBasedMatcher sluzy do znajdowania najblizszych matchy dla parametrow sift
     sift = cv2.SIFT_create()
     flann = cv2.FlannBasedMatcher_create()  # finds the best matches
     bow = cv2.BOWImgDescriptorExtractor(sift, flann)  # descriptor extractor, desriptor matcher
@@ -100,17 +86,15 @@ def extract(imageDictionary):
     bow.setVocabulary(dictionary)
     for part in imageDictionary:
         image = cv2.imread(f'{part["path"]}\/images\/{part["fileName"]}')
-        if part["partDictionaries"]:                                                    #it could be when we are taking parts from circles
+        if part["partDictionaries"]:  # it could be when we are taking parts from circles
             for object in part["partDictionaries"]:
-                bndbox = object["bndboxDict"]
-                sightPart = image[bndbox["ymin"]:bndbox["ymax"], bndbox["xmin"]:bndbox["xmax"]]
+                sightPart = image[object["ymin"]:object["ymax"], object["xmin"]:object["xmax"]]
                 grey = cv2.cvtColor(sightPart, cv2.COLOR_BGR2GRAY)
                 desc = bow.compute(grey, sift.detect(grey))  # input KeypointDescriptor, output imgDescriptor
                 if desc is not None:
                     object.update({'desc': desc})
                 else:
                     object.update({'desc': np.zeros((1, len(dictionary)))})
-
     return imageDictionary
 
 
@@ -132,7 +116,7 @@ def predictImage(rf, data):
             object.update({"predictedStatus": rf.predict(object['desc'])})
 
 
-def accuracyCalculate(dataTest):        #only with test images using xml
+def accuracyCalculate(dataTest):  # only with test images using xml
     trueStatus = []
     predictedStatus = []
     for data in dataTest:
@@ -142,31 +126,41 @@ def accuracyCalculate(dataTest):        #only with test images using xml
     print("Accuracy:", metrics.accuracy_score(trueStatus, predictedStatus))
 
 
-def printingTestImages(dataDict):
-    for data in dataDict:
-        image = cv2.imread(f'{data["path"]}\/images\/{data["fileName"]}')
-        # bndbox = data["partDictionaries"]["bndboxDict"]
-        # sightPart = image[bndbox["ymin"]:bndbox["ymax"], bndbox["xmin"]:bndbox["xmax"]]
-        cv2.imshow(f'{data["path"]}\/images\/{data["fileName"]}', image)
-        i = 0
-        for tmp in data["partDictionaries"]:
-            print(f'Znak: {i}',tmp["status"], tmp["predictedStatus"])
-            i+=1
-        cv2.waitKey(0)
-
-def printingChoosenparts(dataTest):
+def printingChosenparts(dataTest):
     for data in dataTest:
         image = cv2.imread(f'{data["path"]}\/images\/{data["fileName"]}')
-        #imageArray = None
-        #imageArray = np.hstack([image])
         for part in data["partDictionaries"]:
-            bndbox = part["bndboxDict"]
-            sightPart = image[bndbox["ymin"]:bndbox["ymax"], bndbox["xmin"]:bndbox["xmax"]]
-            #imageArray = np.hstack([imageArray, sightPart])
-            cv2.imshow(f"{part['predictedStatus']}", np.hstack(image, sightPart))
-            cv2.waitKey(0)
-        # cv2.imshow(f"images", imageArray)
-        # cv2.waitKey(0)
+            if (part["predictedStatus"] == 1):
+                image = cv2.rectangle(image, (part['xmin'], part['ymin']), (part['xmax'], part['ymax']),
+                                      (0, 255, 0), 1)
+            else:
+                image = cv2.rectangle(image, (part['xmin'], part['ymin']), (part['xmax'], part['ymax']),
+                                      (0, 0, 255), 1)
+        cv2.imshow("images", image)
+        cv2.waitKey(0)
+
+
+def detectInformation(dataTest):
+    iloscZnakow = 0
+    for data in dataTest:
+        print(data["fileName"])
+        if data["partDictionaries"]:
+            foundSights = 0
+            for part in data["partDictionaries"]:
+                if part["predictedStatus"] == 1:
+                    foundSights += 1
+            print(foundSights)
+        else:
+            print('0')
+        if data["partDictionaries"]:
+            for part in data["partDictionaries"]:
+                if part["predictedStatus"] == 1:
+                    print(part["xmin"], part["xmax"], part["ymin"], part["ymax"], )
+                    iloscZnakow += 1
+    print("ilosc zdjec:", len(dataTest))
+    print("ilosc wycinkow:", iloscZnakow)
+
+
 def makingMaskForCircles(hsvImage, lowerMaskL, lowerMaskH, higherMaskL, higherMaskH):
     lowerMask = cv2.inRange(hsvImage, lowerMaskL, lowerMaskH)
     higherMask = cv2.inRange(hsvImage, higherMaskL, higherMaskH)
@@ -183,7 +177,8 @@ def circleOnImage(dataDict):
     for data in dataDict:
         path = data["path"] + "\/images\/" + data["fileName"]
         data["partDictionaries"].clear()
-
+        arrayWithPartDictionary = []
+        data.update({"partDictionaries": arrayWithPartDictionary})
         circles4 = None
         circles5 = None
         image = cv2.imread(path)
@@ -215,32 +210,29 @@ def circleOnImage(dataDict):
                 cv2.circle(image, (i[0], i[1]), i[2], (0, 255, 0), 2)
                 # draw the center of the circle
                 cv2.circle(image, (i[0], i[1]), 2, (0, 255, 0), 3)
-                xmin = i[0] - i[2] - 5
-                xmax = i[0] + i[2] + 5
-                ymin = i[1] - i[2] - 5
-                ymax = i[1] + i[2] + 5
-                print(xmin, xmax, ymin, ymax)
-                if(xmax - xmin > int(data["width"])/10 and  ymax - ymin > int(data["height"])/10):
-                    print("IM HERE")
-                    bndboxDict = {
-                        "xmin": xmin,
-                        "ymin": ymin,
-                        "xmax": xmax,
-                        "ymax": ymax}
-                    data["partDictionaries"].update({"bndboxDict":bndboxDict})
+                xmin = 0
+                if (i[0] - i[2]) > 0 and (i[0] - i[2]) < int(data["width"]):
+                    xmin = i[0] - i[2]
+                xmax = i[0] + i[2]
+                ymin = 0
+                if (i[1] - i[2]) > 0 and (i[1] - i[2]) < int(data["height"]):
+                    ymin = i[1] - i[2]
+                ymax = i[1] + i[2]
+                if (xmax - xmin > int(data["width"]) / 10 and ymax - ymin > int(data["height"]) / 10):
+                    tmpDictionary = {"xmin": xmin,
+                                     "xmax": xmax,
+                                     "ymin": ymin,
+                                     "ymax": ymax}
+                    data["partDictionaries"].append(tmpDictionary)
         except:
             falseCircles += 1
-        data.update({"elementsOnImage" : len(data["partDictionaries"])}) #ilosc elementow wykrytych poprzez algorytm
-        #print("length of dict: ",len(data['partDictionaries']))
+        data.update({"elementsOnImage": len(data["partDictionaries"])})  # ilosc elementow wykrytych poprzez algorytm
         # cv2.imshow(f"images{path_}", np.hstack([image]))
         # cv2.waitKey(0)
-    print(falseCircles)
     return dataDict
 
+
 def main():
-    # pathsWithSpeedSights, pathsWithOther = loadingImage()
-    # summedPaths = pathsWithSpeedSights + pathsWithOther
-    # circleOnImage(pathsWithSpeedSights)
     print("making dictionary for Train Data")
     dataTrain = makingDictionaryForLearning("train")
     print("learning BOW")
@@ -249,31 +241,36 @@ def main():
     dataTrain = extract(dataTrain)  # dictionary with added descriptor parameters
     print("traning data")
     afterTrain = train(dataTrain)
-    # print("making dictionary for Test Data")
-    # dataTest = makingDictionaryForLearning("test")
-    # print("extract data Test")
-    # dataTest = extract(dataTest)
-    # print("predict Image")
-    # predictImage(afterTrain, dataTest)
-    # print("calculate Accuracy")
-    # accuracyCalculate(dataTest)
 
+    print("waiting for input")
+    x = input()
+    if x == "xmlDetect":
+        print("making dictionary for Test Data")
+        dataTest = makingDictionaryForLearning("test")
+        print("extract data Test")
+        dataTest = extract(dataTest)
+        print("predict Image")
+        predictImage(afterTrain, dataTest)
+        print("calculate Accuracy")
+        accuracyCalculate(dataTest)
+    elif x == "detect":
+        print("making dictionary for Test Data")
+        dataTest = makingDictionaryForLearning("test")
+        print("searching for interesting places on image")
+        dataTest = circleOnImage(dataTest)
+        print("extract data Test")
+        dataTest = extract(dataTest)
+        print("predict Image")
+        predictImage(afterTrain, dataTest)
+        print("informations about found sights")
+        detectInformation(dataTest)
+    elif x == "classify":
+        print("classify not ready")
+    else:
+        print("there is no command like ", x)
 
-    #printingTestImages(dataTest)
-
-    print("making dictionary for Test Data")
-    dataTest = makingDictionaryForLearning("test")
-    print("searching for interesting places on image")
-    dataTest = circleOnImage(dataTest)
-    print("extract data Test")
-    dataTest = extract(dataTest)
-    print("predict Image")
-    predictImage(afterTrain, dataTest)
-    print("printing choosen pants")
-    printingChoosenparts(dataTest)
-
-    # dataTest = makingDictionaryForLearning("test")
-    # circleOnImage(dataTest)
+    print("printing chosen parts")
+    printingChosenparts(dataTest)
 
 
 if __name__ == '__main__':
