@@ -6,52 +6,23 @@ import shutil
 from os import walk
 
 # "train" or "test"
-def makingDictionaryForLearning(whatFolder):
+def makingDictionaryForTest():
     arrayWithDicionaries = []
     path = os.getcwd()
     upperPath = os.path.abspath(os.path.join(path, os.pardir))
-    mypath = upperPath + "\/" + whatFolder + "\/annotations"
+    mypath = upperPath + "\/test\/images"
     filenames = next(walk(mypath), (None, None, []))[2]
     for object in filenames:
-        tree = ET.parse(f'{mypath}\/{object}')
-        root = tree.getroot()
-        imageSize = root.find('size')
-        partDictionaryArray = []
-        for ob in root.findall('object'):
-            bndbox = ob.find('bndbox')
-            bndboxDict = {"xmin": int(bndbox[0].text),
-                          "ymin": int(bndbox[1].text),
-                          "xmax": int(bndbox[2].text),
-                          "ymax": int(bndbox[3].text)}
-            xsize = int(bndboxDict["xmax"]) - int(bndboxDict["xmin"])
-            ysize = int(bndboxDict["ymax"]) - int(bndboxDict["ymin"])
-            if ((xsize < int(imageSize.find('width').text) / 10) or (
-                    ysize < int(imageSize.find('height').text) / 10)):
-                continue
-            else:
-                if ob.find('name').text == "speedlimit":
-                    status = 1
-                else:
-                    status = 2
-                partDicionary = {
-                    "name" : ob.find('name').text,
-                    "bndboxDict": bndboxDict,
-                    "status" : status
-                }
-                partDictionaryArray.append(partDicionary)
-        if not partDictionaryArray: #jezeli wszystkie wycinki w obrazie byly za male, pomijamy to zdjecie
-            continue
-        else:
-            imageDictionary = {
-                "fileName": root.find('filename').text,
-                "width": imageSize.find('width').text,
-                "height": imageSize.find('height').text,
-                "path": upperPath + "\/" + whatFolder,
-                "partDicionaries" : partDictionaryArray
-                }
-            arrayWithDicionaries.append(imageDictionary)
+        image = cv2.imread(object)
+        height, width = image.shape
+        imageDictionary = {
+            "fileName": object,
+            "width" : width,
+            "height" : height,
+            "path" : mypath
+        }
+        arrayWithDicionaries.append(imageDictionary)
     return arrayWithDicionaries
-
 
 def sortingSpeedImages(imageNames):
     n = 0;

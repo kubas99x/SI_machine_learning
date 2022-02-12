@@ -8,11 +8,11 @@ from os import walk
 
 
 # train or test
-def makingDictionaryForLearning(whatFolder):
+def makingDictionaryForLearning():
     arrayWithDicionaries = []
     path = os.getcwd()
     upperPath = os.path.abspath(os.path.join(path, os.pardir))
-    mypath = upperPath + "\/" + whatFolder + "\/annotations"
+    mypath = upperPath + "\/train\/annotations"
     filenames = next(walk(mypath), (None, None, []))[2]
     for object in filenames:
         tree = ET.parse(f'{mypath}\{object}')
@@ -51,10 +51,31 @@ def makingDictionaryForLearning(whatFolder):
                 "fileName": root.find('filename').text,
                 "width": imageSize.find('width').text,
                 "height": imageSize.find('height').text,
-                "path": upperPath + "\/" + whatFolder,
+                "path": upperPath + "\/train",
                 "partDictionaries": partDictionaryArray
             }
             arrayWithDicionaries.append(imageDictionary)
+    return arrayWithDicionaries
+
+
+def makingDictionaryForTest():
+    arrayWithDicionaries = []
+    path = os.getcwd()
+    upperPath = os.path.abspath(os.path.join(path, os.pardir))
+    mypath = upperPath + "\/test\/images"
+    filenames = next(walk(mypath), (None, None, []))[2]
+    for object in filenames:
+        image = cv2.imread(f'{mypath}\/{object}')
+        height, width, channel = image.shape
+        arrayWithPartDictionary = []
+        imageDictionary = {
+            "fileName": object,
+            "width": width,
+            "height": height,
+            "path": upperPath + "\/test",
+            "partDictionaries": arrayWithPartDictionary
+        }
+        arrayWithDicionaries.append(imageDictionary)
     return arrayWithDicionaries
 
 
@@ -86,8 +107,9 @@ def extract(imageDictionary):
     bow.setVocabulary(dictionary)
     for part in imageDictionary:
         image = cv2.imread(f'{part["path"]}\/images\/{part["fileName"]}')
-        if part["partDictionaries"]:  # it could be when we are taking parts from circles
+        if len(part["partDictionaries"]) != 0:  # it could be when we are taking parts from circles
             for object in part["partDictionaries"]:
+                print(object["ymin"], object["ymax"], object["xmin"], object["xmax"])
                 sightPart = image[object["ymin"]:object["ymax"], object["xmin"]:object["xmax"]]
                 grey = cv2.cvtColor(sightPart, cv2.COLOR_BGR2GRAY)
                 desc = bow.compute(grey, sift.detect(grey))  # input KeypointDescriptor, output imgDescriptor
@@ -115,16 +137,6 @@ def predictImage(rf, data):
         for object in sample["partDictionaries"]:
             object.update({"predictedStatus": rf.predict(object['desc'])})
     return data
-
-
-def accuracyCalculate(dataTest):  # only with test images using xml
-    trueStatus = []
-    predictedStatus = []
-    for data in dataTest:
-        for object in data["partDictionaries"]:
-            trueStatus.append(object["status"])
-            predictedStatus.append(object["predictedStatus"])
-    print("Accuracy:", metrics.accuracy_score(trueStatus, predictedStatus))
 
 
 def printingChosenparts(dataTest):
@@ -161,6 +173,7 @@ def detectInformation(dataTest):
     print("ilosc zdjec:", len(dataTest))
     print("ilosc wycinkow:", iloscZnakow)
 
+
 def classifyInput():
     upperPath = os.path.abspath(os.path.join(os.getcwd(), os.pardir))
     mypath = upperPath + "\/" + "test"
@@ -182,6 +195,8 @@ def classifyInput():
             classifyDict["partDictionaries"].append(tmpDictionary)
         dataClassify.append(classifyDict)
     return dataClassify
+
+
 def classifyReturn(dataTest):
     for data in dataTest:
         for part in data["partDictionaries"]:
@@ -189,6 +204,8 @@ def classifyReturn(dataTest):
                 print("speedlimit")
             else:
                 print("other")
+
+
 def makingMaskForCircles(hsvImage, lowerMaskL, lowerMaskH, higherMaskL, higherMaskH):
     lowerMask = cv2.inRange(hsvImage, lowerMaskL, lowerMaskH)
     higherMask = cv2.inRange(hsvImage, higherMaskL, higherMaskH)
@@ -204,9 +221,6 @@ def circleOnImage(dataDict):
     falseCircles = 0;
     for data in dataDict:
         path = data["path"] + "\/images\/" + data["fileName"]
-        data["partDictionaries"].clear()
-        arrayWithPartDictionary = []
-        data.update({"partDictionaries": arrayWithPartDictionary})
         circles4 = None
         circles5 = None
         image = cv2.imread(path)
@@ -255,14 +269,12 @@ def circleOnImage(dataDict):
         except:
             falseCircles += 1
         data.update({"elementsOnImage": len(data["partDictionaries"])})  # ilosc elementow wykrytych poprzez algorytm
-        # cv2.imshow(f"images{path_}", np.hstack([image]))
-        # cv2.waitKey(0)
     return dataDict
 
 
 def main():
     print("making dictionary for Train Data")
-    dataTrain = makingDictionaryForLearning("train")
+    dataTrain = makingDictionaryForLearning()
     print("learning BOW")
     learningBOW(dataTrain)
     print("extract data Train")
@@ -272,18 +284,9 @@ def main():
 
     print("waiting for input")
     x = input()
-    if x == "xmlDetect":
+    if x == "detect":
         print("making dictionary for Test Data")
-        dataTest = makingDictionaryForLearning("test")
-        print("extract data Test")
-        dataTest = extract(dataTest)
-        print("predict Image")
-        dataTest = predictImage(afterTrain, dataTest)
-        print("calculate Accuracy")
-        accuracyCalculate(dataTest)
-    elif x == "detect":
-        print("making dictionary for Test Data")
-        dataTest = makingDictionaryForLearning("test")
+        dataTest = makingDictionaryForTest()
         print("searching for interesting places on image")
         dataTest = circleOnImage(dataTest)
         print("extract data Test")
@@ -297,11 +300,12 @@ def main():
         dataClassify = extract(dataClassify)
         dataClassify = predictImage(afterTrain, dataClassify)
         classifyReturn(dataClassify)
+        printingChosenparts(dataClassify)
     else:
         print("there is no command like ", x)
 
-    #print("printing chosen parts")
-    #printingChosenparts(dataTest)
+    # print("printing chosen parts")
+    # printingChosenparts(dataTest)
 
 
 if __name__ == '__main__':
