@@ -294,20 +294,25 @@ def circleOnImage(dataDict):
                 cv2.circle(image, (i[0], i[1]), i[2], (0, 255, 0), 2)
                 # draw the center of the circle
                 cv2.circle(image, (i[0], i[1]), 2, (0, 255, 0), 3)
-                xmin = 0
-                if (i[0] - i[2]) > 0 and (i[0] - i[2]) < int(data["width"]):
-                    xmin = i[0] - i[2]
-                xmax = i[0] + i[2]
-                ymin = 0
-                if (i[1] - i[2]) > 0 and (i[1] - i[2]) < int(data["height"]):
-                    ymin = i[1] - i[2]
-                ymax = i[1] + i[2]
-                if (xmax - xmin > int(data["width"]) / 10 and ymax - ymin > int(data["height"]) / 10):
-                    tmpDictionary = {"xmin": xmin,
-                                     "xmax": xmax,
-                                     "ymin": ymin,
-                                     "ymax": ymax}
-                    data["partDictionaries"].append(tmpDictionary)
+                if(i[0] < 1000 and i[1] < 1000 and i[2] < 1000):
+                    xmin = 0
+                    ymin = 0
+                    xmax = i[0] + i[2]
+                    ymax = i[1] + i[2]
+                    if 0 < (i[0] - i[2]) < int(data["width"]):
+                        xmin = i[0] - i[2]
+                    if 0 < (i[1] - i[2]) < int(data["height"]):
+                        ymin = i[1] - i[2]
+                    if xmax > int(data["width"]):
+                        xmax = int(data["width"])
+                    if ymax > int(data["height"]):
+                        ymax = int(data["height"])
+                    if xmax - xmin > int(data["width"]) / 10 and ymax - ymin > int(data["height"]) / 10:
+                        tmpDictionary = {"xmin": xmin,
+                                         "xmax": xmax,
+                                         "ymin": ymin,
+                                         "ymax": ymax}
+                        data["partDictionaries"].append(tmpDictionary)
         except:
             falseCircles += 1
         data.update({"elementsOnImage": len(data["partDictionaries"])})  # ilosc elementow wykrytych poprzez algorytm
@@ -339,7 +344,7 @@ def main():
         dataTest = predictImage(afterTrain, dataTest)
         print("informations about found sights")
         detectInformation(dataTest)
-        #printingChosenparts(dataTest)
+        printingChosenparts(dataTest)
     elif x == "classify":
         dataClassify = classifyInput()
         dataClassify = extract(dataClassify)
