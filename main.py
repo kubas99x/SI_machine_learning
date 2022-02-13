@@ -344,7 +344,7 @@ def main():
         dataTest = predictImage(afterTrain, dataTest)
         print("informations about found sights")
         detectInformation(dataTest)
-        printingChosenparts(dataTest)
+        #printingChosenparts(dataTest)
     elif x == "classify":
         dataClassify = classifyInput()
         dataClassify = extract(dataClassify)
