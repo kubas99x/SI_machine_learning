@@ -137,3 +137,6 @@ Funkcja ta przyjmuje słownik danych testowych, oraz wyświetla każde ze zdję�
 notes_and_test - plik używany w celu sprawdzania pewnych rozwiązań, w czasie pisania kodu głównego
 sortowanie_zdjec_do_folderow - program służący do losowego przekopiowania zdjęć oraz plików xml do odpowiednich folderów "train" oraz "test" w stosunku 3:1
 TreeLementsDetection - program użyty w celu testowania iterowania po pliku xml
+
+## Problemy 
+Jedyny problem w projekcie występuje przy detekcji obszarów w dla funkcji "detect". Zdjęcia są robione w różnym otoczeniu przy różnym oświetleniu. Dlatego znaki mają bardzo szeroką gammę kolorów. Nawet przy użyciu 3 masek występuje problem z poprawnym wycięciem znaku z obrazu. A jeżeli program nie wyznaczy okręgu na obrazie, to zdjęcie to nie jest dalej brane pod uwagę w procesie detekcji.
