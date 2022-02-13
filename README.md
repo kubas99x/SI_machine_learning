@@ -124,3 +124,10 @@ def predictImage(rf, data):
 def classifyReturn(dataTest):
 ```
 
+## Dodatkowe pliki oraz funkcje
+
+1. Jedną z dodatkowych funkcji napisanych w programie jest funkcja
+```
+def printingChosenparts(dataTest):
+```
+Funkcja ta przyjmuje słownik danych testowych, oraz wyświetla każde ze zdjęć w słowniku z zaznaczonymi prostokątami wokół znaków i wykrytych miejsc. Jeżeli wycinek ten ma status znaku ograniczenia prędkości prostokąt jest zielony. Jeżli wycinek należy do klasy "other" zaznaczony prostokąt ma kolor czerwony.
