@@ -124,10 +124,16 @@ def predictImage(rf, data):
 def classifyReturn(dataTest):
 ```
 
-## Dodatkowe pliki oraz funkcje
+## Dodatkowe funkcje
 
 1. Jedną z dodatkowych funkcji napisanych w programie jest funkcja
 ```
 def printingChosenparts(dataTest):
 ```
-Funkcja ta przyjmuje słownik danych testowych, oraz wyświetla każde ze zdjęć w słowniku z zaznaczonymi prostokątami wokół znaków i wykrytych miejsc. Jeżeli wycinek ten ma status znaku ograniczenia prędkości prostokąt jest zielony. Jeżli wycinek należy do klasy "other" zaznaczony prostokąt ma kolor czerwony.
+Funkcja ta przyjmuje słownik danych testowych, oraz wyświetla każde ze zdjęć w słowniku z zaznaczonymi prostokątami wokół znaków i wykrytych miejsc. Jeżeli wycinek ten ma status znaku ograniczenia prędkości prostokąt jest zielony. Jeżli wycinek należy do klasy "other" zaznaczony prostokąt ma kolor czerwony:
+![showImagefunction](https://user-images.githubusercontent.com/65685755/153768681-ef052e11-76df-4ef2-aa48-e913c2367e2e.jpg)
+
+## Dodatkowe pliki w repozytorium
+notes_and_test - plik używany w celu sprawdzania pewnych rozwiązań, w czasie pisania kodu głównego
+sortowanie_zdjec_do_folderow - program służący do losowego przekopiowania zdjęć oraz plików xml do odpowiednich folderów "train" oraz "test" w stosunku 3:1
+TreeLementsDetection - program użyty w celu testowania iterowania po pliku xml
