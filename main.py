@@ -11,10 +11,10 @@ def makingDictionaryForLearning():
     arrayWithDicionaries = []
     path = os.getcwd()
     upperPath = os.path.abspath(os.path.join(path, os.pardir))
-    mypath = upperPath + "\/train\/annotations"
+    mypath = upperPath + "/train/annotations"
     filenames = next(walk(mypath), (None, None, []))[2]
     for object in filenames:
-        tree = ET.parse(f'{mypath}\{object}')
+        tree = ET.parse(f'{mypath}/{object}')
         root = tree.getroot()
         imageSize = root.find('size')
         partDictionaryArray = []
@@ -50,7 +50,7 @@ def makingDictionaryForLearning():
                 "fileName": root.find('filename').text,
                 "width": imageSize.find('width').text,
                 "height": imageSize.find('height').text,
-                "path": upperPath + "\/train",
+                "path": upperPath + "/train",
                 "partDictionaries": partDictionaryArray
             }
             arrayWithDicionaries.append(imageDictionary)
@@ -105,17 +105,17 @@ def makingDictionaryForTest():
     arrayWithDicionaries = []
     path = os.getcwd()
     upperPath = os.path.abspath(os.path.join(path, os.pardir))
-    mypath = upperPath + "\/test\/images"
+    mypath = upperPath + "/test/images"
     filenames = next(walk(mypath), (None, None, []))[2]
     for object in filenames:
-        image = cv2.imread(f'{mypath}\/{object}')
+        image = cv2.imread(f'{mypath}/{object}')
         height, width, channel = image.shape
         arrayWithPartDictionary = []
         imageDictionary = {
             "fileName": object,
             "width": width,
             "height": height,
-            "path": upperPath + "\/test",
+            "path": upperPath + "/test",
             "partDictionaries": arrayWithPartDictionary
         }
         arrayWithDicionaries.append(imageDictionary)
@@ -127,7 +127,7 @@ def learningBOW(imageDictionary):
     bow = cv2.BOWKMeansTrainer(dictionarySize)
     sift = cv2.SIFT_create()
     for part in imageDictionary:
-        image = cv2.imread(f'{part["path"]}\/images\/{part["fileName"]}')
+        image = cv2.imread(f'{part["path"]}/images/{part["fileName"]}')
         for object in part["partDictionaries"]:
             sightPart = image[object["ymin"]:object["ymax"], object["xmin"]:object["xmax"]]
             try:
@@ -137,7 +137,7 @@ def learningBOW(imageDictionary):
                 if desc is not None:
                     bow.add(desc)
             except:
-                print("error in BOW")
+                pass
     dictionary = bow.cluster()
     np.save('dict.npy', dictionary)  # zapisanie naszego slownika do pliku
 
@@ -149,7 +149,7 @@ def extract(imageDictionary):
     dictionary = np.load('dict.npy')
     bow.setVocabulary(dictionary)
     for part in imageDictionary:
-        image = cv2.imread(f'{part["path"]}\/images\/{part["fileName"]}')
+        image = cv2.imread(f'{part["path"]}/images/{part["fileName"]}')
         if len(part["partDictionaries"]) != 0:  # it could be when we are taking parts from circles
             for object in part["partDictionaries"]:
                 sightPart = image[object["ymin"]:object["ymax"], object["xmin"]:object["xmax"]]
@@ -183,7 +183,7 @@ def predictImage(rf, data):
 
 def printingChosenparts(dataTest):
     for data in dataTest:
-        image = cv2.imread(f'{data["path"]}\/images\/{data["fileName"]}')
+        image = cv2.imread(f'{data["path"]}/images/{data["fileName"]}')
         for part in data["partDictionaries"]:
             if (part["predictedStatus"] == 1):
                 image = cv2.rectangle(image, (part['xmin'], part['ymin']), (part['xmax'], part['ymax']),
@@ -212,13 +212,11 @@ def detectInformation(dataTest):
                 if part["predictedStatus"] == 1:
                     print(part["xmin"], part["xmax"], part["ymin"], part["ymax"], )
                     iloscZnakow += 1
-    # print("ilosc zdjec:", len(dataTest))
-    # print("ilosc wycinkow:", iloscZnakow)
 
 
 def classifyInput():
     upperPath = os.path.abspath(os.path.join(os.getcwd(), os.pardir))
-    mypath = upperPath + "\/" + "test"
+    mypath = upperPath + "/" + "test"
     dataClassify = []
     numberOfFiles = input()
     for number in range(int(numberOfFiles)):
@@ -262,7 +260,7 @@ def makingMaskForCircles(hsvImage, lowerMaskL, lowerMaskH, higherMaskL, higherMa
 def circleOnImage(dataDict):
     falseCircles = 0;
     for data in dataDict:
-        path = data["path"] + "\/images\/" + data["fileName"]
+        path = data["path"] + "/images/" + data["fileName"]
         circles4 = None
         circles5 = None
         image = cv2.imread(path)
@@ -294,7 +292,7 @@ def circleOnImage(dataDict):
                 cv2.circle(image, (i[0], i[1]), i[2], (0, 255, 0), 2)
                 # draw the center of the circle
                 cv2.circle(image, (i[0], i[1]), 2, (0, 255, 0), 3)
-                if(i[0] < 1000 and i[1] < 1000 and i[2] < 1000):
+                if (i[0] < 1000 and i[1] < 1000 and i[2] < 1000):
                     xmin = 0
                     ymin = 0
                     xmax = i[0] + i[2]
@@ -320,39 +318,26 @@ def circleOnImage(dataDict):
 
 
 def main():
-    print("making dictionary for Train Data")
     dataTrain = makingDictionaryForLearning()
-    print("adding parts to Train Data")
     dataTrain = addingPartsToTrainData(dataTrain)
-    print("learning BOW")
     learningBOW(dataTrain)
-    print("extract data Train")
     dataTrain = extract(dataTrain)  # dictionary with added descriptor parameters
-    print("traning data")
     afterTrain = train(dataTrain)
 
-    print("waiting for input")
     x = input()
     if x == "detect":
-        print("making dictionary for Test Data")
         dataTest = makingDictionaryForTest()
-        print("searching for interesting places on image")
         dataTest = circleOnImage(dataTest)
-        print("extract data Test")
         dataTest = extract(dataTest)
-        print("predict Image")
         dataTest = predictImage(afterTrain, dataTest)
-        print("informations about found sights")
         detectInformation(dataTest)
-        #printingChosenparts(dataTest)
+        # printingChosenparts(dataTest)
     elif x == "classify":
         dataClassify = classifyInput()
         dataClassify = extract(dataClassify)
         dataClassify = predictImage(afterTrain, dataClassify)
         classifyReturn(dataClassify)
-        #printingChosenparts(dataClassify)
-    else:
-        print("there is no command like ", x)
+        # printingChosenparts(dataClassify)
 
 
 if __name__ == '__main__':
