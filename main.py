@@ -6,6 +6,25 @@ from sklearn.ensemble import RandomForestClassifier
 from os import walk
 import random
 
+# TODO Jakość kodu i raport (4/4)
+
+
+# TODO Skuteczność klasyfikacji 0.953 (4/4)
+# TODO [0.00, 0.50) - 0.0
+# TODO [0.50, 0.55) - 0.5
+# TODO [0.55, 0.60) - 1.0
+# TODO [0.60, 0.65) - 1.5
+# TODO [0.65, 0.70) - 2.0
+# TODO [0.70, 0.75) - 2.5
+# TODO [0.75, 0.80) - 3.0
+# TODO [0.80, 0.85) - 3.5
+# TODO [0.85, 1.00) - 4.0
+
+
+# TODO Skuteczność detekcji mAP = 0.371 (4/6) (1.5/2)
+
+# TODO max(4, 4+1.5) = 5.5
+
 
 def makingDictionaryForLearning():
     arrayWithDicionaries = []
@@ -61,6 +80,7 @@ def addingPartsToTrainData(dataTrain):
     for object in dataTrain:
         if len(object["partDictionaries"]) == 1 and object["partDictionaries"][0]["status"] == 2:
             for n in range(4):
+                # TODO Moznaby dodac rozne wielkosci wycinkow.
                 xmin = random.randint(0, int(object["width"]) - 55)
                 xmax = xmin + 50
                 ymin = random.randint(0, int(object["height"]) - 55)
